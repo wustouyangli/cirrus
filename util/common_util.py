@@ -6,9 +6,16 @@ import socket
 env_dict = os.environ
 
 
+class EnvType(object):
+    DEV = 'dev'
+    TEST = 'test'
+    PROD = 'prod'
+
+
 class CommonUtil(object):
     SERVICE_TAG_KEY = 'SERVICE_TAG'
     SERVICE_WEIGHT_KEY = 'SERVICE_WEIGHT'
+    ENV_KEY = 'CIRRUS_ENV'
     _HOSTNAME = None
 
     @classmethod
@@ -38,6 +45,10 @@ class CommonUtil(object):
         if weight is not None:
             return weight
         return env_dict.get(cls.SERVICE_WEIGHT_KEY, 0)
+
+    @classmethod
+    def is_prod(cls):
+        return env_dict.get(cls.ENV_KEY, EnvType.DEV) == EnvType.PROD
 
     @classmethod
     def get_hostname(cls):

@@ -5,6 +5,7 @@ import socket
 import select
 import signal
 import errno
+import Queue as _Queue
 from thrift.server.TServer import TServer
 from multiprocessing import Queue, Process, Manager, Value
 from exception.harakiri_exception import HarakiriException
@@ -12,6 +13,7 @@ from thrift.transport import TTransport
 from contextlib import contextmanager
 from util.common_util import CommonUtil
 from server.epoll_connection import EpollConnection, ConnectionStatus
+from server.connection_limiter import ConnectionLimiter
 
 
 class EpollServer(TServer):
@@ -40,6 +42,13 @@ class EpollServer(TServer):
 
         manager = Manager()
         self.responses = manager.dict()
+        self.connection_limiter = ConnectionLimiter(self.get_queue_size, event_queue_size)
+
+    def get_queue_size(self):
+        try:
+            return self.tasks.qsize()
+        except NotImplementedError:
+            return 0
 
     def register_harakiri(self):
         signal.signal(signal.SIGALRM, self.do_harakiri)
@@ -165,7 +174,28 @@ class EpollServer(TServer):
                     if connection:
                         connection.read()
                         if connection.status == ConnectionStatus.WAIT_PROCESS:
-                            pass
+                            try:
+                                if self.connection_limiter.try_acquire():
+                                    self.tasks.put_nowait([connection.message, connection.flieno()])
+                                else:
+                                    connection.reset()
+                                    del self.clients[fileno]
+                            except _Queue.Full:
+                                connection.reset()
+                                del self.clients[fileno]
+                else:
+                    connection = self.clients[fileno]
+                    connection.reset()
+                    del self.clients[fileno]
+            elif events & select.EPOLLOUT:
+                connection = self.clients.get(fileno)
+                if connection:
+                    connection.write()
+            elif events & select.EPOLLHUP:
+                connection = self.clients.get(fileno)
+                if connection:
+                    connection.close()
+                    del self.clients[fileno]
 
     def register_epollin(self, fileno):
         self.epoll.register(fileno, select.EPOLLIN)

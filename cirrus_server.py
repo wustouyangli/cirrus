@@ -7,6 +7,7 @@ from thrift.protocol import TBinaryProtocol
 from util.common_util import CommonUtil
 from server.service_config_data import ServiceConfigData
 from transport.thrift_server_socket import ThriftServerSocket
+from server.epoll_server import EpollServer
 
 
 class CirrusServer(object):
@@ -14,6 +15,7 @@ class CirrusServer(object):
     DEFAULT_THRIFT_PROTOCOL_FACTORY = TBinaryProtocol.TBinaryProtocolAcceleratedFactory()
     DEFAULT_THRIFT_LISTEN_QUEUE_SIZE = 128
     DEFAULT_WORKER_PROCESS_NUMBER = 4
+    DEFAULT_UNPROD_WORKER_PROCESS_NUMBER = 1
     DEFAULT_HARAKIRI = 5
     DEFAULT_EVENT_QUEUE_SIZE = 100
     DEFAULT_THRIFT_RECV_TIMEOUT = 50000
@@ -44,6 +46,27 @@ class CirrusServer(object):
         transport = ThriftServerSocket(queue=thrift_listen_queue_size, recv_timeout=thrift_recv_timeout, port=port)
         tfactory = TTransport.TFramedTransportFactory()
         pfactory = protocol_factory
+
+        if not CommonUtil.is_prod():
+            worker_process_number = self.DEFAULT_UNPROD_WORKER_PROCESS_NUMBER
+
+        server = EpollServer(
+            processor,
+            transport,
+            tfactory,
+            pfactory,
+            harakiri=harikiri,
+            event_queue_size=event_queue_size,
+            worker_process_number=worker_process_number,
+            service_config_data=self.service_config_data,
+            port=port
+        )
+
+        self.service_key = service_key
+        self.port = port
+        self.server = server
+        self.tag = tag
+        self.handler = handler
 
     def start(self):
         pass
