@@ -16,6 +16,7 @@ class CommonUtil(object):
     SERVICE_TAG_KEY = 'SERVICE_TAG'
     SERVICE_WEIGHT_KEY = 'SERVICE_WEIGHT'
     ENV_KEY = 'CIRRUS_ENV'
+    SEC_FOR_SERVER_TEARDOWN_KEY = 'SEC_FOR_SERVER_TEARDOWN'
     _HOSTNAME = None
 
     @classmethod
@@ -63,3 +64,7 @@ class CommonUtil(object):
         elif e.args:
             return e.args[0]
         return None
+
+    @classmethod
+    def get_sec_for_server_teardown(cls):
+        return int(env_dict.get(cls.SEC_FOR_SERVER_TEARDOWN_KEY, 10))

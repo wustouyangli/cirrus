@@ -1,13 +1,20 @@
 # coding=utf-8
 
 import os
+import sys
 import inspect
+import logging
+import signal
+import time
 from thrift.transport import TTransport
 from thrift.protocol import TBinaryProtocol
 from util.common_util import CommonUtil
 from server.service_config_data import ServiceConfigData
 from transport.thrift_server_socket import ThriftServerSocket
 from server.epoll_server import EpollServer
+from multiprocessing import Process
+
+logger = logging.getLogger(__name__)
 
 
 class CirrusServer(object):
@@ -67,6 +74,55 @@ class CirrusServer(object):
         self.server = server
         self.tag = tag
         self.handler = handler
+        self.worker_process = None
 
     def start(self):
+        try:
+            logger.info('master process id: %d', os.getpid())
+            # 启动工作进程
+            worker_process = Process(target=self._start)
+            worker_process.start()
+            logger.info('worker process id: %d, port: %d', worker_process.pid, self.port)
+            self.worker_process = worker_process
+
+            # kill命令不加参数终止进程
+            signal.signal(signal.SIGTERM, self._signal_exit)
+            # ctrl + C 终止进程
+            signal.signal(signal.SIGINT, self._signal_exit)
+            # 段错误,try catch难以捕获此异常
+            signal.signal(signal.SIGSEGV, self._signal_exit)
+            # zookeeper注册服务
+            self._register_server()
+            # 工作进程异常退出
+            worker_process.join()
+            logger.error('Worker process id: %d unexpected exit', worker_process.pid)
+        except Exception as e:
+            # 主进程异常退出
+            logger.error('master process id: %d error: %s', os.getpid(), e.message)
+            self._stop(exit_code=1)
+
+    def _start(self):
+        # SIG_IGN忽略子进程状态信息,子进程会被自动回收,不会产生僵尸进程
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
+        self.server.serve()
+
+    def _signal_exit(self, signum, frame):
+        logger.info('master process id: %d receive signal %d', os.getpid(), signum)
+        if signum == signal.SIGINT:
+            self._stop(graceful=False)
+        else:
+            self._stop(graceful=True)
+
+    def _stop(self, exit_code=0, graceful=True):
+        logger.info('master process id: %d stop worker process: %d', os.getpid(), self.worker_process.pid)
+        self._unregister_server()
+        if graceful:
+            time.sleep(CommonUtil.get_sec_for_server_teardown())
+        self.server.stop()
+        sys.exit(exit_code)
+
+    def _unregister_server(self):
+        pass
+
+    def _register_server(self):
         pass
