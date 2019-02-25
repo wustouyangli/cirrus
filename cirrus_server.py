@@ -13,6 +13,7 @@ from server.service_config_data import ServiceConfigData
 from transport.thrift_server_socket import ThriftServerSocket
 from server.epoll_server import EpollServer
 from multiprocessing import Process
+from zookeeper.zk_publisher import ZkPublisher
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +76,9 @@ class CirrusServer(object):
         self.tag = tag
         self.handler = handler
         self.worker_process = None
+        self.local_ip = CommonUtil.get_local_ip()
+        instance_path = '%s:%s' % (self.local_ip, self.port)
+        self.zk_publisher = ZkPublisher(instance_path)
 
     def start(self):
         try:
@@ -122,7 +126,7 @@ class CirrusServer(object):
         sys.exit(exit_code)
 
     def _unregister_server(self):
-        pass
+        self.zk_publisher.stop()
 
     def _register_server(self):
-        pass
+        self.zk_publisher.register(self.service_config_data)

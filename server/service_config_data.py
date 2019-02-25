@@ -1,7 +1,5 @@
 # coding=utf-8
 
-import json
-
 
 class ServiceConfigData(object):
 
@@ -16,6 +14,3 @@ class ServiceConfigData(object):
             'weight': self.weight,
             'hostname': self.hostname
         }
-
-    def __str__(self):
-        return json.dumps(self.to_dict())

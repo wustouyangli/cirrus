@@ -2,6 +2,7 @@
 
 import os
 import socket
+import netifaces
 
 env_dict = os.environ
 
@@ -15,7 +16,7 @@ class EnvType(object):
 class CommonUtil(object):
     SERVICE_TAG_KEY = 'SERVICE_TAG'
     SERVICE_WEIGHT_KEY = 'SERVICE_WEIGHT'
-    ENV_KEY = 'CIRRUS_ENV'
+    ENV_KEY = 'ENV'
     SEC_FOR_SERVER_TEARDOWN_KEY = 'SEC_FOR_SERVER_TEARDOWN'
     _HOSTNAME = None
 
@@ -68,3 +69,8 @@ class CommonUtil(object):
     @classmethod
     def get_sec_for_server_teardown(cls):
         return int(env_dict.get(cls.SEC_FOR_SERVER_TEARDOWN_KEY, 10))
+
+    @classmethod
+    def get_local_ip(cls):
+        local_ip = netifaces.ifaddresses('eth0')[2][0]['addr']
+        return local_ip

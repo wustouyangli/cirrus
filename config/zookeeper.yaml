@@ -1,2 +1,0 @@
-zk:
-  path: /data/zookeeper/{{env}}_services/

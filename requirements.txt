@@ -1,3 +1,5 @@
 --index-url https://pypi.org/simple/
 
 thrift==0.10.0
+kazoo==2.2.1
+netifaces==0.10.9
