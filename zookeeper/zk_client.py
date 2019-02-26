@@ -20,9 +20,6 @@ class ZkClient(object):
         self._client = KazooClient(hosts=self._hosts)
         self.start()
 
-    def _ensure_path(self):
-        self._client.ensure_path(self._zk_path)
-
     def start(self):
         if self._stop_flag:
             self._client.start()

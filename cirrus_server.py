@@ -77,7 +77,7 @@ class CirrusServer(object):
         self.handler = handler
         self.worker_process = None
         self.local_ip = CommonUtil.get_local_ip()
-        instance_path = '%s:%s' % (self.local_ip, self.port)
+        instance_path = '%s/%s:%s' % (self.service_key, self.local_ip, self.port)
         self.zk_publisher = ZkPublisher(instance_path)
 
     def start(self):

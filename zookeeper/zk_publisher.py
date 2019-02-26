@@ -13,10 +13,12 @@ logger = logging.getLogger(__name__)
 
 class ZkPublisher(ZkClient):
 
-    def __init__(self, instance_path):
+    def __init__(self, service_key, instance_path):
         super(ZkPublisher, self).__init__()
+        self._service_key = service_key
         self._instance_path = instance_path
-        self._node_path = '%s/%s' % (self._zk_path, self._instance_path)
+        self._service_path = '%s/%s' % (self._zk_path, self._service_key)
+        self._node_path = '%s/%s' % (self._service_path, self._instance_path)
         self._info = None
 
     def register(self, info):
@@ -46,6 +48,9 @@ class ZkPublisher(ZkClient):
             self._client.handler.spawn(self.register, self._info)
             self._connection_lost = False
             logger.info('zookeeper reconnection, current state: %s', state)
+
+    def _ensure_path(self):
+        self._client.ensure_path(self._service_path)
 
     def _serialize_info(self):
         if not isinstance(self._info, ServiceConfigData):
