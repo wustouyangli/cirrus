@@ -5,7 +5,7 @@ import atexit
 from zookeeper.zk_client import ZkClient
 from kazoo.protocol.states import KazooState
 from kazoo.exceptions import NoNodeError, NodeExistsError
-from server.service_config_data import ServiceConfigData
+from server.instance_config_data import InstanceConfigData
 import logging
 
 logger = logging.getLogger(__name__)
@@ -19,23 +19,23 @@ class ZkPublisher(ZkClient):
         self._instance_path = instance_path
         self._service_path = '%s/%s' % (self._zk_path, self._service_key)
         self._node_path = '%s/%s' % (self._service_path, self._instance_path)
-        self._info = None
+        self._instance_config_data = None
 
-    def register(self, info):
-        self._info = info
+    def register(self, instance_config_data):
+        self._instance_config_data = instance_config_data
         self._client.add_listener(self._state_listener)
         try:
             self._ensure_path()
-            self._client.create(self._node_path, self._serialize_info())
+            self._client.create(self._node_path, self._serialize_instance_config_data())
         except NodeExistsError:
             logger.info('zookeeper node exists, path: %s', self._node_path)
         atexit.register(self.stop)
 
-    def modify(self, info):
-        self._info = info
+    def modify(self, instance_config_data):
+        self._instance_config_data = instance_config_data
         try:
             self._ensure_path()
-            self._client.set(self._node_path, self._serialize_info())
+            self._client.set(self._node_path, self._serialize_instance_config_data())
         except NoNodeError:
             logger.info('zookeeper node does not exists, path: %s', self._node_path)
 
@@ -45,16 +45,16 @@ class ZkPublisher(ZkClient):
             logger.info('zookeeper connection lost, current state: %s', state)
         elif state == KazooState.CONNECTED and self._connection_lost:
             # 重新连接
-            self._client.handler.spawn(self.register, self._info)
+            self._client.handler.spawn(self.register, self._instance_config_data)
             self._connection_lost = False
             logger.info('zookeeper reconnection, current state: %s', state)
 
     def _ensure_path(self):
         self._client.ensure_path(self._service_path)
 
-    def _serialize_info(self):
-        if not isinstance(self._info, ServiceConfigData):
+    def _serialize_instance_config_data(self):
+        if not isinstance(self._instance_config_data, InstanceConfigData):
             raise Exception('zookeeper register invalid service config data')
-        return json.dumps(self._info.to_dict())
+        return json.dumps(self._instance_config_data.to_dict())
 
 

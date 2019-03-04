@@ -9,7 +9,7 @@ import time
 from thrift.transport import TTransport
 from thrift.protocol import TBinaryProtocol
 from util.common_util import CommonUtil
-from server.service_config_data import ServiceConfigData
+from server.instance_config_data import InstanceConfigData
 from transport.thrift_server_socket import ThriftServerSocket
 from server.epoll_server import EpollServer
 from multiprocessing import Process
@@ -49,7 +49,7 @@ class CirrusServer(object):
         tag = CommonUtil.get_service_tag(tag)
         weight = CommonUtil.get_service_weight(weight)
         hostname = CommonUtil.get_hostname()
-        self.service_config_data = ServiceConfigData(tag=tag, weight=weight, hostname=hostname)
+        self._instance_config_data = InstanceConfigData(tag=tag, weight=weight, hostname=hostname)
 
         transport = ThriftServerSocket(queue=thrift_listen_queue_size, recv_timeout=thrift_recv_timeout, port=port)
         tfactory = TTransport.TFramedTransportFactory()
@@ -66,19 +66,19 @@ class CirrusServer(object):
             harakiri=harikiri,
             event_queue_size=event_queue_size,
             worker_process_number=worker_process_number,
-            service_config_data=self.service_config_data,
+            instance_config_data=self._instance_config_data,
             port=port
         )
 
-        self.service_key = service_key
-        self.port = port
-        self.server = server
-        self.tag = tag
-        self.handler = handler
-        self.worker_process = None
-        self.local_ip = CommonUtil.get_local_ip()
-        instance_path = '%s/%s:%s' % (self.service_key, self.local_ip, self.port)
-        self.zk_publisher = ZkPublisher(instance_path)
+        self._service_key = service_key
+        self._port = port
+        self._server = server
+        self._tag = tag
+        self._handler = handler
+        self._worker_process = None
+        self._local_ip = CommonUtil.get_local_ip()
+        instance_path = '%s/%s:%s' % (self._service_key, self._local_ip, self._port)
+        self._zk_publisher = ZkPublisher(instance_path)
 
     def start(self):
         try:
@@ -86,8 +86,8 @@ class CirrusServer(object):
             # 启动工作进程
             worker_process = Process(target=self._start)
             worker_process.start()
-            logger.info('worker process id: %d, port: %d', worker_process.pid, self.port)
-            self.worker_process = worker_process
+            logger.info('worker process id: %d, port: %d', worker_process.pid, self._port)
+            self._worker_process = worker_process
 
             # kill命令不加参数终止进程
             signal.signal(signal.SIGTERM, self._signal_exit)
@@ -108,7 +108,7 @@ class CirrusServer(object):
     def _start(self):
         # SIG_IGN忽略子进程状态信息,子进程会被自动回收,不会产生僵尸进程
         signal.signal(signal.SIGINT, signal.SIG_IGN)
-        self.server.serve()
+        self._server.serve()
 
     def _signal_exit(self, signum, frame):
         logger.info('master process id: %d receive signal %d', os.getpid(), signum)
@@ -118,15 +118,15 @@ class CirrusServer(object):
             self._stop(graceful=True)
 
     def _stop(self, exit_code=0, graceful=True):
-        logger.info('master process id: %d stop worker process: %d', os.getpid(), self.worker_process.pid)
+        logger.info('master process id: %d stop worker process: %d', os.getpid(), self._worker_process.pid)
         self._unregister_server()
         if graceful:
             time.sleep(CommonUtil.get_sec_for_server_teardown())
-        self.server.stop()
+        self._server.stop()
         sys.exit(exit_code)
 
     def _unregister_server(self):
-        self.zk_publisher.stop()
+        self._zk_publisher.stop()
 
     def _register_server(self):
-        self.zk_publisher.register(self.service_config_data)
+        self._zk_publisher.register(self._instance_config_data)
