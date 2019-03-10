@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_THRIFT_PROTOCOL_FACTORY = TBinaryProtocolAcceleratedFactory()
 DEFAULT_THRIFT_TRANSPORT_FACTORY = TBufferedTransportFactory()
 SECS_FOR_DISCONNECT = 10
+REQUEST_NUM_FOR_DISCONNECT = 1
 
 
 class EnsureConnectionClient(type):
@@ -19,7 +20,7 @@ class EnsureConnectionClient(type):
     def __new__(mcs, class_name, class_bases, class_dict):
         thrift_client_class = class_bases[0]  # thrift client
 
-        def __init__(self, host_selector, timeout=5000, socket_connection_timeout=1000,
+        def __init__(self, host_selector, req_timeout=5000, socket_connection_timeout=1000,
                      retry_count=3, protocol_factory=DEFAULT_THRIFT_PROTOCOL_FACTORY,
                      transport_factory=DEFAULT_THRIFT_TRANSPORT_FACTORY):
 
@@ -29,7 +30,7 @@ class EnsureConnectionClient(type):
             ip, port = host.split(':')
             self._ip = ip
             self._port = int(port)
-            self._timeout = timeout
+            self._req_timeout = req_timeout
             self._socket_connection_timeout = socket_connection_timeout
             self._retry_count = retry_count
             self._protocol_factory = protocol_factory
@@ -43,6 +44,7 @@ class EnsureConnectionClient(type):
             self._transport = None
             self._protocol = None
             self._client = None
+            self._request_served_num = 0
 
         class_dict['__init__'] = __init__
 
@@ -53,10 +55,10 @@ class EnsureConnectionClient(type):
                 left_try_count = retry_count
                 while left_try_count:
                     start_time = time.time()
-                    select_new = left_try_count == 1
+                    
                     try:
                         # 连接服务端
-                        client = self.connect(select_new)
+                        client = self.connect(left_try_count == 1)
                         res = method(client, *args, **kwargs)
                         time_taken = time.time() - start_time
                         logger.info('Request: %s.%s (connect to %s:%s) call succeed, taken %s seconds.',
@@ -71,7 +73,7 @@ class EnsureConnectionClient(type):
                         left_try_count -= 1
                         # 断开连接
                         self.disconnect()
-                        if select_new:
+                        if left_try_count == 1:
                             self._host_selector.invalid_host()
                         if not left_try_count:
                             logger.info('Request: %s.%s call failed after all %s retries',
@@ -101,7 +103,7 @@ class Client(object):
     def connect(self, select_new=False):
         # 已连接,设置请求超时时间
         if self._connected:
-            self._socket.setTimeout(self._timeout)
+            self._socket.setTimeout(self._req_timeout)
             return self._client
 
         if select_new:
@@ -121,7 +123,7 @@ class Client(object):
         self._connected = True
         self._connected_at = time.time()
         # 设置请求超时时间
-        self._socket.setTimeout(self._timeout)
+        self._socket.setTimeout(self._req_timeout)
 
         return self._client
 
@@ -135,8 +137,12 @@ class Client(object):
         self._transport = None
         self._protocol = None
         self._client = None
+        self._request_served_num = 0
 
-    def refresh_connection(self):
+    def refresh_connection(self, request_num_for_disconnect=REQUEST_NUM_FOR_DISCONNECT):
+        self._request_served_num += 1
         if self._connected:
-            if time.time() - self._connected_at > SECS_FOR_DISCONNECT:
+            # 连接超期或者已达请求数则关闭连接
+            if time.time() - self._connected_at > SECS_FOR_DISCONNECT \
+                    or self._request_served_num == request_num_for_disconnect:
                 self.disconnect()

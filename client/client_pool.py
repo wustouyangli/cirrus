@@ -3,6 +3,7 @@
 import time
 import gevent
 from util.schedule_task import ScheduleTask
+from contextlib import contextmanager
 import logging
 
 logger = logging.getLogger(__name__)
@@ -53,12 +54,23 @@ class ClientPool(object):
         )
         self._gc_task.run()
 
-    '''
-    获取单个连接
-    block: 是否以阻塞的方式获取连接,为True时,队列为空一直等待, 否则直接返回
-    timeout: 等待超时时间 
-    '''
-    def get_client(self, block=True, timeout=1000):
+    @contextmanager
+    def get_client(self, block=True, pool_acquire_client_timeout=1000, req_timeout=5000):
+        client_holder = self._get_client(block, pool_acquire_client_timeout)
+        tm = None
+        try:
+            tm = gevent.Timeout.start_new(req_timeout)
+            yield client_holder.get_client()
+        except Exception as e:
+            logger.info('Client is out pool for too long %s seconds, raise exception: %s', req_timeout, e)
+            self._close_client(client_holder)
+            raise
+        finally:
+            if tm:
+                tm.cancel()
+            self.push(client_holder)
+
+    def _get_client(self, block=True, timeout=1000):
         if self.is_empty():
             logger.info('ClientPool: %s is empty.', self._pool_name)
         client_holder = self._queue.get(block=block, timeout=timeout)
@@ -76,7 +88,7 @@ class ClientPool(object):
                 if tm:
                     tm.cancel()
         client_holder.set_access_time(time.time())
-        return client_holder.get_client()
+        return client_holder
 
     def push(self, client_holder):
         if not self.is_full():
@@ -91,17 +103,20 @@ class ClientPool(object):
     def _create_client(self):
         return self._client_class(*self._client_args, **self._client_kwargs)
 
+    def _close_client(self, client_holder):
+        if self._close_client_handler and client_holder.get_client():
+            try:
+                self._close_client_handler(client_holder.get_client())
+            except Exception as e:
+                logger.error('Close client raise exception: %s', e)
+        client_holder.set_client(None)
+
     def _close_expire_client(self):
         cur_time = time.time()
         need_closed_clients = []
         for client_holder in self._queue.queue:
             if client_holder.get_client() and cur_time - client_holder.get_access_time() > self._client_expire_time:
                 need_closed_clients.append(client_holder.get_client)
-                client_holder.set_client(None)
 
-        if self._close_client_handler:
-            for client in need_closed_clients:
-                try:
-                    self._close_client_handler(client)
-                except Exception as e:
-                    logger.error('Close client raise exception: %s', repr(e))
+        for client in need_closed_clients:
+            self._close_client_handler(client)

@@ -72,4 +72,11 @@ class HostSelector(object):
         return good_instances[0].host
 
     def invalid_host(self):
-        pass
+        cur_time = time.time()
+        if self._selected_host not in self._bad_hosts:
+            self._bad_hosts[self._selected_host] = cur_time
+            logger.info('Invalid host: %s at %s', self._selected_host, cur_time)
+
+        self._last_selected_host = self._selected_host
+        self._selected_host = None
+        self._selected_time = None

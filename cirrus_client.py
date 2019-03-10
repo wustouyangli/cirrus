@@ -16,7 +16,7 @@ DEFAULT_TRANSPORT_FACTORY = TBufferedTransportFactory()
 class CirrusClient(object):
 
     def __init__(self, thrift_module, tag=None, pool_size=1,
-                 timeout=5000, socket_connection_timeout=1000,
+                 req_timeout=5000, socket_connection_timeout=1000,
                  pool_acquire_client_timeout=1000, retry_count=3,
                  protocol_factory=DEFAULT_PROTOCOL_FACTORY,
                  transport_factory=DEFAULT_TRANSPORT_FACTORY,
@@ -32,7 +32,7 @@ class CirrusClient(object):
         self._client_class = type(self._client_class_name, (thrift_module.Client, Client), {})
 
         self._pool_size = pool_size
-        self._timeout = timeout
+        self._req_timeout = req_timeout
         self._socket_connection_timeout = socket_connection_timeout
         self._pool_acquire_client_timeout = pool_acquire_client_timeout
         self._retry_count = retry_count
@@ -49,13 +49,11 @@ class CirrusClient(object):
                                        client_class=self._client_class,
                                        close_client_handler=close_client,
                                        host_selector=self._host_selector,
-                                       timeout=self._timeout,
+                                       req_timeout=self._req_timeout,
                                        socket_connection_timeout=self._socket_connection_timeout,
                                        retry_count=self._retry_count,
                                        protocol_factory=self._protocol_factory,
                                        transport_factory=self._transport_factory)
-
-        self._client = None
 
     def __getattr__(self, method_name):
 
@@ -64,8 +62,10 @@ class CirrusClient(object):
 
         @functools.wraps(method_name)
         def wrapper(*args, **kwargs):
-            if not self._client:
-                self._client = self._client_pool.get_client(block=True, timeout=self._pool_acquire_client_timeout)
-            return getattr(self._client, method_name)(*args, **kwargs)
+            with self._client_pool.get_client(
+                    block=True,
+                    pool_acquire_client_timeout=self._pool_acquire_client_timeout,
+                    req_timeout=self._req_timeout) as client:
+                return getattr(client, method_name)(*args, **kwargs)
 
         return wrapper
