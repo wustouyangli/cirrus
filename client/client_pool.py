@@ -59,26 +59,24 @@ class ClientPool(object):
     timeout: 等待超时时间 
     '''
     def get_client(self, block=True, timeout=1000):
-        try:
-            client_holder = self._queue.get(block=block, timeout=timeout)
-            if client_holder.get_client() is None:
-                tm = None
-                try:
-                    tm = gevent.Timeout.start_new(timeout)
-                    client_holder.set_client(self._create_client())
-                except:
-                    client_holder.set_client(None)
-                    self.push(client_holder)
-                    raise
-                finally:
-                    if tm:
-                        tm.cancel()
-            client_holder.set_access_time(time.time())
-
-        except Exception as e:
-            logger.info('Try get client from client pool %s raise exception: %s', self._pool_name, repr(e))
-            client_holder = None
-        return client_holder
+        if self.is_empty():
+            logger.info('ClientPool: %s is empty.', self._pool_name)
+        client_holder = self._queue.get(block=block, timeout=timeout)
+        if client_holder.get_client() is None:
+            tm = None
+            try:
+                tm = gevent.Timeout.start_new(timeout)
+                client_holder.set_client(self._create_client())
+            except Exception as e:
+                client_holder.set_client(None)
+                self.push(client_holder)
+                logger.info('Try get client from client pool %s raise exception: %s', self._pool_name, e)
+                raise
+            finally:
+                if tm:
+                    tm.cancel()
+        client_holder.set_access_time(time.time())
+        return client_holder.get_client()
 
     def push(self, client_holder):
         if not self.is_full():

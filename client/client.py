@@ -53,9 +53,10 @@ class EnsureConnectionClient(type):
                 left_try_count = retry_count
                 while left_try_count:
                     start_time = time.time()
+                    select_new = left_try_count == 1
                     try:
                         # 连接服务端
-                        client = self.connect(select_new=(left_try_count == 1))
+                        client = self.connect(select_new)
                         res = method(client, *args, **kwargs)
                         time_taken = time.time() - start_time
                         logger.info('Request: %s.%s (connect to %s:%s) call succeed, taken %s seconds.',
@@ -70,6 +71,8 @@ class EnsureConnectionClient(type):
                         left_try_count -= 1
                         # 断开连接
                         self.disconnect()
+                        if select_new:
+                            self._host_selector.invalid_host()
                         if not left_try_count:
                             logger.info('Request: %s.%s call failed after all %s retries',
                                         service_name, method_name, retry_count)
