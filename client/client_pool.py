@@ -2,6 +2,7 @@
 
 import time
 import gevent
+from gevent.queue import LifoQueue
 from util.schedule_task import ScheduleTask
 from contextlib import contextmanager
 import logging
@@ -42,7 +43,7 @@ class ClientPool(object):
         self._close_client_handler = close_client_handler
         self._client_args = client_args
         self._client_kwargs = client_kwargs
-        self._queue = gevent.queue.LifoQueue(maxsize=pool_size)
+        self._queue = LifoQueue(maxsize=pool_size)
         for i in range(pool_size):
             self._queue.put(ClientHolder())
         self._client_expire_time = self.DEFAULT_CLIENT_EXPIRE_TIME
