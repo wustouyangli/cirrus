@@ -8,7 +8,6 @@ import errno
 import Queue as _Queue
 from thrift.server.TServer import TServer
 from multiprocessing import Queue, Process, Manager, Value
-from exception.harakiri_exception import HarakiriException
 from thrift.transport import TTransport
 from contextlib import contextmanager
 from util.common_util import CommonUtil
@@ -54,7 +53,7 @@ class EpollServer(TServer):
         signal.signal(signal.SIGALRM, self._do_harakiri)
 
     def _do_harakiri(self, signum, frame):
-        raise HarakiriException('Execution killed after %s seconds' % self._harakiri)
+        raise Exception('Execution killed after %s seconds' % self._harakiri)
 
     @contextmanager
     def _harakiri_execute(self):

@@ -1,10 +1,12 @@
 # coding=utf-8
 
 import socket
+import struct
+import select
 
 
 class ConnectionStatus(object):
-    WAIT_REQ = 0      # 等待请求
+    WAIT_LEN = 0      # 等待消息长度
     WAIT_MSG = 1      # 等待消息
     WAIT_PROCESS = 2  # 等待处理
     PROCESSING = 3    # 正在处理
@@ -22,37 +24,88 @@ def socket_exception_wrapper(func):
 
 class EpollConnection(object):
     def __init__(self, new_socket, epoll):
-        self.socket = new_socket
-        self.socket.setblocking(False)
-        self.epoll = epoll
+        self._socket = new_socket
+        self._socket.setblocking(False)
+        self._epoll = epoll
 
-        self.status = ConnectionStatus.WAIT_REQ
-        self.msg_len = 0
-        self.msg = b''
+        self._status = ConnectionStatus.WAIT_LEN
+        self._msg_len = 0
+        self._msg = b''
 
-    def ready(self, *args):
-        pass
+    def ready(self, succeed, msg):
+        assert self._status == ConnectionStatus.WAIT_PROCESS
+        if not succeed:
+            self.close()
+            return
+
+        self._msg_len = 0
+        if len(msg) == 0:
+            self._msg = b''
+            self._status = ConnectionStatus.WAIT_LEN  # 等待消息长度
+        else:
+            self._msg = struct.pack('!i', len(msg)) + msg
+            self._status = ConnectionStatus.PROCESSING  # 处理中
+            self._modify_epoll(self._socket.fileno(), select.EPOLLOUT)
+
+    def _read_len(self):
+        s = self._socket.recv(4 - len(self._msg))
+        if len(s) == 0:
+            self.close()
+            return
+
+        self._msg += s
+        if len(self._msg) == 4:
+            self._msg_len, = struct.unpack('!i', self._msg)
+            if self._msg_len <= 0:
+                self.close()
 
     @socket_exception_wrapper
     def read(self):
-        pass
+        assert self._status in [ConnectionStatus.WAIT_LEN, ConnectionStatus.WAIT_MSG]
+        if self._status == ConnectionStatus.WAIT_LEN:
+            self._read_len()
+        elif self._status == ConnectionStatus.WAIT_MSG:
+            s = self._socket.recv(self._msg_len - len(self._msg))
+            if len(s) == 0:
+                self.close()
+                return
+            self._msg += s
+            # 读取消息完整时才变成待处理状态
+            if len(self._msg) == self._msg_len:
+                self._status = ConnectionStatus.WAIT_PROCESS
+                self._modify_epoll(self._socket.fileno(), 0)
 
     @socket_exception_wrapper
     def write(self):
-        pass
+        assert self._status == ConnectionStatus.PROCESSING
+        send_size = self._socket.send(self._msg)
+        # 消息发送完毕
+        if send_size == len(self._msg):
+            self._status = ConnectionStatus.WAIT_LEN
+            self._msg = b''
+            self._msg_len = 0
+            # 变成读入状态
+            self._modify_epoll(self._socket.fileno(), select.EPOLLIN)
+        else:
+            self._msg = self._msg[send_size:]
 
     def close(self):
-        pass
+        self._status = ConnectionStatus.CLOSED
+        self._unregister_epoll(self._socket.fileno())
+        self._socket.close()
 
     def reset(self):
-        pass
+        self._status = ConnectionStatus.CLOSED
+        self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack('ii', 1, 0))
+        self._unregister_epoll(self._socket.fileno())
+        self._socket.close()
 
     # 取消注册文件描述符
-    def unregister_epoll(self, fileno):
-        self.epoll.unregister(fileno)
+    def _unregister_epoll(self, fileno):
+        self._epoll.unregister(fileno)
 
     # 修改文件描述符状态
-    def modify_epoll(self, fileno, status):
-        self.epoll.modify(fileno, status)
+    def _modify_epoll(self, fileno, status):
+        self._epoll.modify(fileno, status)
 
 
