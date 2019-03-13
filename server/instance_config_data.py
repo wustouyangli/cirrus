@@ -5,8 +5,8 @@ class InstanceConfigData(object):
 
     def __init__(self, **kwargs):
         self.tag = kwargs.get('tag')
-        self.weight = kwargs.get('weight')
-        self.hostname = kwargs.get('hostname')
+        self.weight = kwargs.get('weight', 100)
+        self.hostname = kwargs.get('hostname', 'unknown')
 
     def to_dict(self):
         return {

@@ -54,7 +54,7 @@ class ZkSubscriber(ZkClient):
                         instance_config_data = json.loads(instance_config_data)
                     except Exception as e:
                         instance_config_data = {}
-                        logger.info('json loads service config data error, host: %', host)
+                        logger.error('Json loads instance (%s) config data error: %s', host, e)
                     instance_config_data = InstanceConfigData(**instance_config_data)
                     self._hosts[host] = InstanceConfigDataExtension(host=host, instance_config_data=instance_config_data, mtime=mtime)
                 instances.append(self._hosts[host])
