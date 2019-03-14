@@ -26,6 +26,7 @@ class HostProvider(object):
         files = glob.glob(regex)
         random.shuffle(files)
         instances = []
+        limit = 20
         for file in files:
             if os.path.isfile(file):
                 host_info = file.split(':')
@@ -42,7 +43,7 @@ class HostProvider(object):
                     if self._tag is not None and instance_config_data.tag != self._tag:
                         continue
 
-                    if mtime > self._hosts[host].mtime:
+                    if mtime != self._hosts[host].mtime:
                         need_read = True
                 else:
                     need_read = True
@@ -57,7 +58,10 @@ class HostProvider(object):
                         logger.error('Json loads instance (%s) config data error: %s', host, e)
                     instance_config_data = InstanceConfigData(**instance_config_data)
                     self._hosts[host] = InstanceConfigDataExtension(host=host, instance_config_data=instance_config_data, mtime=mtime)
-                instances.append(self._hosts[host])
+
+                if limit > 0 and self._tag is None or self._hosts[host].instance_config_data.tag == self._tag:
+                    instances.append(self._hosts[host])
+                    limit -= 1
         return instances
 
 
