@@ -8,8 +8,8 @@ logger = logging.getLogger(__name__)
 
 class HostSelector(object):
 
-    def __init__(self, zk_subscriber, use_weight=False, expire_time=600, retry_time=60):
-        self._zk_subscriber = zk_subscriber
+    def __init__(self, host_provider, use_weight=False, expire_time=600, retry_time=60):
+        self._host_provider = host_provider
         self._use_weight = use_weight
         self._expire_time = expire_time
         self._retry_time = retry_time
@@ -44,7 +44,7 @@ class HostSelector(object):
             return self._random_select_host()
 
     def _random_select_host(self):
-        instances = self._zk_subscriber.get_instances()
+        instances = self._host_provider.get_instances()
         for i in range(3):
             instance = random.choice(instances)
             if instance.host not in self._bad_hosts.keys():
@@ -57,7 +57,7 @@ class HostSelector(object):
         return host
 
     def _weighted_select_host(self):
-        instances = self._zk_subscriber.get_instances()
+        instances = self._host_provider.get_instances()
         good_instances = [instance for instance in instances if instance.host not in self._bad_hosts.keys()]
         assert len(good_instances)
         total_weight = sum(instance.instance_config_data.weight for instance in instances)

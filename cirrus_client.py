@@ -5,7 +5,7 @@ from thrift.protocol.TBinaryProtocol import TBinaryProtocolAcceleratedFactory
 from thrift.transport.TTransport import TBufferedTransportFactory
 from util.common_util import CommonUtil
 from client.host_selector import HostSelector
-from zookeeper.zk_subscriber import ZkSubscriber
+from client.host_provider import HostProvider
 from client.client import Client
 from client.client_pool import ClientPool
 
@@ -22,8 +22,8 @@ class CirrusClient(object):
                  transport_factory=DEFAULT_TRANSPORT_FACTORY,
                  use_weight_host_selector=True):
         service_key = CommonUtil.get_service_key(thrift_module)
-        zk_subscriber = ZkSubscriber(service_key, tag)
-        host_selector = HostSelector(zk_subscriber, use_weight_host_selector)
+        host_provider = HostProvider(service_key, tag)
+        host_selector = HostSelector(host_provider, use_weight_host_selector)
 
         self._service_key = service_key
         self._host_selector = host_selector

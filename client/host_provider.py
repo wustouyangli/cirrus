@@ -5,16 +5,16 @@ import glob
 import json
 import random
 import logging
-from zookeeper.zk_client import ZkClient
+from zookeeper.zk_util import ZkUtil
 from server.instance_config_data import InstanceConfigData, InstanceConfigDataExtension
 
 logger = logging.getLogger(__name__)
 
 
-class ZkSubscriber(ZkClient):
+class HostProvider(object):
 
     def __init__(self, service_key, tag=None):
-        super(ZkSubscriber, self).__init__()
+        self._zk_path = ZkUtil.get_zk_path()
         self._service_key = service_key
         self._service_path = '%s/%s' % (self._zk_path, self._service_key)
         self._hosts = {}
