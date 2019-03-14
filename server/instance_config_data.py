@@ -19,7 +19,7 @@ class InstanceConfigData(object):
 class InstanceConfigDataExtension(object):
 
     def __init__(self, **kwargs):
-        self._host = kwargs.get('host')
+        self.host = kwargs.get('host')
         instance_config_data = kwargs.get('instance_config_data')
         if isinstance(instance_config_data, InstanceConfigData):
             self.instance_config_data = instance_config_data
@@ -29,7 +29,7 @@ class InstanceConfigDataExtension(object):
 
     def to_dict(self):
         return {
-            'host': self._host,
+            'host': self.host,
             'instance_config_data': self.instance_config_data.to_dict(),
             'mtime': self.mtime
         }

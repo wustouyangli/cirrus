@@ -51,9 +51,8 @@ class HostSelector(object):
                 return instance.host
 
         good_hosts = [instance.host for instance in instances if instance.host not in self._bad_hosts.keys()]
-
+        assert len(good_hosts)
         host = random.choice(good_hosts)
-        assert host
         return host
 
     def _weighted_select_host(self):
@@ -72,8 +71,8 @@ class HostSelector(object):
         return good_instances[0].host
 
     def invalid_host(self):
-        cur_time = time.time()
         if self._selected_host not in self._bad_hosts:
+            cur_time = time.time()
             self._bad_hosts[self._selected_host] = cur_time
             logger.info('Invalid host: %s at %s', self._selected_host, cur_time)
 

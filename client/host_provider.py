@@ -29,7 +29,8 @@ class HostProvider(object):
         limit = 20
         for file in files:
             if os.path.isfile(file):
-                host_info = file.split(':')
+                filename = os.path.basename(file)
+                host_info = filename.split(':')
                 ip = host_info[0]
                 port = host_info[1]
                 host = '%s:%s' % (ip, port)

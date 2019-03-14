@@ -12,6 +12,7 @@ from zookeeper.zk_publisher import ZkPublisher
 from server.instance_config_data import InstanceConfigData
 from util.common_util import CommonUtil
 from client.host_provider import HostProvider
+from client.host_selector import HostSelector
 
 
 def test_zk_client():
@@ -35,7 +36,25 @@ def test_host_provider():
         print instance.to_dict()
 
 
+def test_host_selector():
+    host_provider = HostProvider(service_key='cirrus')
+    host_selector = HostSelector(host_provider, expire_time=2, retry_time=2)
+    # host = host_selector.get_host()
+    # print host
+    # host_selector.invalid_host()
+    # host = host_selector.get_host()
+    # print host
+
+    for i in range(8):
+        host = host_selector.get_host()
+        print host
+        time.sleep(1)
+        if i == 4:
+            host_selector.invalid_host()
+
+
 if __name__ == "__main__":
     # test_zk_client()
     # test_zk_publisher()
-    test_host_provider()
+    # test_host_provider()
+    test_host_selector()
