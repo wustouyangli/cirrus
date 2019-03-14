@@ -55,6 +55,9 @@ class ClientPool(object):
         )
         self._gc_task.run()
 
+    def __del__(self):
+        self._gc_task.stop()
+
     @contextmanager
     def get_client(self, block=True, pool_acquire_client_timeout=1000, req_timeout=5000):
         client_holder = self._get_client(block, pool_acquire_client_timeout)

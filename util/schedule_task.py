@@ -17,8 +17,8 @@ class ScheduleTask(object):
         self._handler = handler
         self._args = args
         self._kwargs = kwargs
-        self._task = None
         self._last_schedule_time = time.time() + start_after_seconds - interval_seconds
+        self._task = None
 
     def run(self):
         self._task = gevent.spawn(self._run())

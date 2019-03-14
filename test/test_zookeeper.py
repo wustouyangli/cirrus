@@ -13,6 +13,8 @@ from server.instance_config_data import InstanceConfigData
 from util.common_util import CommonUtil
 from client.host_provider import HostProvider
 from client.host_selector import HostSelector
+from util.schedule_task import ScheduleTask
+import gevent
 
 
 def test_zk_client():
@@ -53,8 +55,36 @@ def test_host_selector():
             host_selector.invalid_host()
 
 
+class GC(object):
+    def __init__(self):
+        self.job = gevent.spawn(self._handler)
+        self.job.run()
+
+    def _handler(self):
+        while True:
+            print 'hi, oyl'
+            time.sleep(1)
+
+    def __del__(self):
+        print 'del'
+        self.job.kill(block=True)
+
+
+def run_job():
+    gc = GC()
+    print 'init gc'
+    time.sleep(3)
+    del gc
+
+
+def test_schedule_task():
+    job = gevent.spawn(run_job)
+    job.run()
+
+
 if __name__ == "__main__":
     # test_zk_client()
     # test_zk_publisher()
     # test_host_provider()
-    test_host_selector()
+    # test_host_selector()
+    test_schedule_task()
