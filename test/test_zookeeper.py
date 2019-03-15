@@ -1,6 +1,10 @@
 # coding=utf-8
 
 import env_base
+import gevent
+from gevent import monkey
+
+monkey.patch_all()
 import logging
 logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(asctime)s - %(name)s %(process)d - %(message)s')
 
@@ -13,8 +17,8 @@ from server.instance_config_data import InstanceConfigData
 from util.common_util import CommonUtil
 from client.host_provider import HostProvider
 from client.host_selector import HostSelector
+from client.client_pool import ClientPool
 from util.schedule_task import ScheduleTask
-import gevent
 
 
 def test_zk_client():
@@ -57,29 +61,64 @@ def test_host_selector():
 
 class GC(object):
     def __init__(self):
-        self.job = gevent.spawn(self._handler)
-        self.job.run()
+        self._gc = ScheduleTask(
+            name='gc-job',
+            start_after_seconds=1,
+            interval_seconds=2,
+            handler=self._f
+        )
+        self._gc.run()
 
-    def _handler(self):
-        while True:
-            print 'hi, oyl'
-            time.sleep(1)
+    def _f(self):
+        print 'hi oyl'
 
     def __del__(self):
-        print 'del'
-        self.job.kill(block=True)
-
-
-def run_job():
-    gc = GC()
-    print 'init gc'
-    time.sleep(3)
-    del gc
+        self._gc.stop()
 
 
 def test_schedule_task():
-    job = gevent.spawn(run_job)
-    job.run()
+    gc = GC()
+    print 'init gc'
+    time.sleep(6)
+    del gc
+
+
+class MyClient(object):
+
+    def __init__(self):
+        print 'my client init'
+
+    def say_hello(self):
+        print 'hello'
+
+
+def close_client(client):
+    print 'close client'
+
+
+def test_client_pool():
+    client_pool = ClientPool(
+        pool_name='test-client-pool',
+        pool_size=5,
+        client_class=MyClient,
+        close_client_handler=close_client,
+
+    )
+
+    # with client_pool.get_client() as client:
+    #     # time.sleep(6)  验证请求超时
+    #     client.say_hello()
+
+    def multi_acquire_client(client_pool):
+        with client_pool.get_client() as client:
+            # time.sleep(6)  验证请求超时
+            time.sleep(2)
+            client.say_hello()
+    jobs = []
+    for i in range(10):
+        jobs.append(gevent.spawn(multi_acquire_client, client_pool))
+
+    gevent.joinall(jobs)
 
 
 if __name__ == "__main__":
@@ -87,4 +126,5 @@ if __name__ == "__main__":
     # test_zk_publisher()
     # test_host_provider()
     # test_host_selector()
-    test_schedule_task()
+    # test_schedule_task()
+    test_client_pool()

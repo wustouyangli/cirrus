@@ -11,6 +11,7 @@ from client.client_pool import ClientPool
 
 DEFAULT_PROTOCOL_FACTORY = TBinaryProtocolAcceleratedFactory()
 DEFAULT_TRANSPORT_FACTORY = TBufferedTransportFactory()
+MILLIS_PER_SEC = 1000.0
 
 
 class CirrusClient(object):
@@ -64,8 +65,8 @@ class CirrusClient(object):
         def wrapper(*args, **kwargs):
             with self._client_pool.get_client(
                     block=True,
-                    pool_acquire_client_timeout=self._pool_acquire_client_timeout,
-                    req_timeout=self._req_timeout) as client:
+                    pool_acquire_client_timeout=self._pool_acquire_client_timeout/MILLIS_PER_SEC,
+                    req_timeout=self._req_timeout/MILLIS_PER_SEC) as client:
                 return getattr(client, method_name)(*args, **kwargs)
 
         return wrapper

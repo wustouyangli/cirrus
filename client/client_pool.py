@@ -59,14 +59,14 @@ class ClientPool(object):
         self._gc_task.stop()
 
     @contextmanager
-    def get_client(self, block=True, pool_acquire_client_timeout=1000, req_timeout=5000):
+    def get_client(self, block=True, pool_acquire_client_timeout=1, req_timeout=5):
         client_holder = self._get_client(block, pool_acquire_client_timeout)
         tm = None
         try:
             tm = gevent.Timeout.start_new(req_timeout)
             yield client_holder.get_client()
-        except Exception as e:
-            logger.info('Client is out pool for too long %s seconds, raise exception: %s', req_timeout, e)
+        except BaseException as e:
+            logger.error('Client is out pool for too long %s seconds, raise exception: %s', req_timeout, e)
             self._close_client(client_holder)
             raise
         finally:
@@ -74,7 +74,7 @@ class ClientPool(object):
                 tm.cancel()
             self.push(client_holder)
 
-    def _get_client(self, block=True, timeout=1000):
+    def _get_client(self, block=True, timeout=1):
         if self.is_empty():
             logger.info('ClientPool: %s is empty.', self._pool_name)
         client_holder = self._queue.get(block=block, timeout=timeout)
@@ -83,10 +83,9 @@ class ClientPool(object):
             try:
                 tm = gevent.Timeout.start_new(timeout)
                 client_holder.set_client(self._create_client())
-            except Exception as e:
+            except BaseException as e:
                 client_holder.set_client(None)
                 self.push(client_holder)
-                logger.info('Try get client from client pool %s raise exception: %s', self._pool_name, e)
                 raise
             finally:
                 if tm:
