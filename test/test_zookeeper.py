@@ -144,12 +144,22 @@ def test_client():
 def test_cirrus_client():
     thrift_module = OylWorkService
 
-    client = CirrusClient(thrift_module)
-    op = 'sub'
-    a = 10
-    b = 2
-    res = client.work(op, a, b)
-    print res.result
+    client = CirrusClient(thrift_module, pool_size=5)
+
+
+    def f(client):
+        op = 'sub'
+        a = 10
+        b = 2
+        res = client.work(op, a, b)
+        print res.result
+
+    jobs = []
+    for i in range(30):
+        jobs.append(gevent.spawn(f, client))
+
+    gevent.joinall(jobs)
+
 
 
 if __name__ == "__main__":
