@@ -45,6 +45,7 @@ class HostSelector(object):
 
     def _random_select_host(self):
         instances = self._host_provider.get_instances()
+        assert len(instances)
         for i in range(3):
             instance = random.choice(instances)
             if instance.host not in self._bad_hosts.keys():

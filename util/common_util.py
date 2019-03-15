@@ -24,7 +24,7 @@ class CommonUtil(object):
     def get_service_key(cls, thrift_module):
         name = thrift_module.__name__
         # 将模块名分成两部分,以最后一个.作为分隔符,取后半部分
-        key = name.rapartition('.')[-1]
+        key = name.rpartition('.')[-1]
         return key
 
     @classmethod

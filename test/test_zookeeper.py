@@ -19,6 +19,8 @@ from client.host_provider import HostProvider
 from client.host_selector import HostSelector
 from client.client_pool import ClientPool
 from util.schedule_task import ScheduleTask
+from client.client import Client
+from test.oyl_thrift.gen_py.com.oyl import OylWorkService
 
 
 def test_zk_client():
@@ -121,10 +123,28 @@ def test_client_pool():
     gevent.joinall(jobs)
 
 
+def test_client():
+    thrift_module = OylWorkService
+    service_key = CommonUtil.get_service_key(thrift_module)
+    tag = None
+    client_class_name = service_key + 'Client(%s)' % tag
+    # print service_key, tag, client_class_name
+    client_class = type(client_class_name, (thrift_module.Client, Client), {})
+    host_provider = HostProvider(service_key)
+    host_selector = HostSelector(host_provider)
+    client = client_class(host_selector=host_selector)
+    op = 'sub'
+    a = 10
+    b = 2
+    res = client.work(op, a, b)
+    print res.result
+
+
 if __name__ == "__main__":
     # test_zk_client()
     # test_zk_publisher()
     # test_host_provider()
     # test_host_selector()
     # test_schedule_task()
-    test_client_pool()
+    # test_client_pool()
+    test_client()

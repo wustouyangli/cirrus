@@ -62,27 +62,27 @@ class EnsureConnectionClient(type):
                         res = method(client, *args, **kwargs)
                         time_taken = time.time() - start_time
                         logger.info('Request: %s.%s (connect to %s:%s) call succeed, taken %s seconds.',
-                                    service_name, method_name, self._host, self._port, time_taken)
+                                    service_name, method_name, self._ip, self._port, time_taken)
                         # 更新过期连接
                         self.refresh_connection()
                         return res
                     except Exception as e:
                         time_taken = time.time() - start_time
-                        logger.info('Request: %s.%s (connect to %s:%s) call failed, taken %s seconds, exception: %s',
-                                    service_name, method_name, self._host, self._port, time_taken, e)
+                        logger.error('Request: %s.%s (connect to %s:%s) call failed, taken %s seconds, exception: %s',
+                                    service_name, method_name, self._ip, self._port, time_taken, e)
                         left_try_count -= 1
                         # 断开连接
                         self.disconnect()
                         if left_try_count == 1:
                             self._host_selector.invalid_host()
                         if not left_try_count:
-                            logger.info('Request: %s.%s call failed after all %s retries',
+                            logger.error('Request: %s.%s call failed after all %s retries',
                                         service_name, method_name, retry_count)
                             raise
 
             return wrapper
 
-        service_name = thrift_client_class.__module__.rapartition('.')[-1]
+        service_name = thrift_client_class.__module__.rpartition('.')[-1]
         for method_name, method in inspect.getmembers(thrift_client_class, predicate=inspect.ismethod):
             if method_name.startswith('__'):
                 continue
@@ -116,6 +116,8 @@ class Client(object):
         # 设置socket连接超时时间
         self._socket.setTimeout(self._socket_connection_timeout)
         self._transport = self._transport_factory.getTransport(self._socket)
+        self._transport.open()
+
         self._protocol = self._protocol_factory.getProtocol(self._transport)
         thrift_client_class = self.__class__.__bases__[0]
 
