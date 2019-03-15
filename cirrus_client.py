@@ -1,5 +1,6 @@
 # coding=utf-8
 
+import inspect
 import functools
 from thrift.protocol.TBinaryProtocol import TBinaryProtocolAcceleratedFactory
 from thrift.transport.TTransport import TBufferedTransportFactory
@@ -57,11 +58,11 @@ class CirrusClient(object):
                                        transport_factory=self._transport_factory)
 
     def __getattr__(self, method_name):
+        method = getattr(self._iface, method_name, None)
+        if method is None or not inspect.ismethod(method):
+            return None
 
-        if not getattr(self._iface, method_name, None):
-            return method_name
-
-        @functools.wraps(method_name)
+        @functools.wraps(method)
         def wrapper(*args, **kwargs):
             with self._client_pool.get_client(
                     block=True,

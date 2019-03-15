@@ -20,6 +20,7 @@ from client.host_selector import HostSelector
 from client.client_pool import ClientPool
 from util.schedule_task import ScheduleTask
 from client.client import Client
+from cirrus_client import CirrusClient
 from test.oyl_thrift.gen_py.com.oyl import OylWorkService
 
 
@@ -140,6 +141,17 @@ def test_client():
     print res.result
 
 
+def test_cirrus_client():
+    thrift_module = OylWorkService
+
+    client = CirrusClient(thrift_module)
+    op = 'sub'
+    a = 10
+    b = 2
+    res = client.work(op, a, b)
+    print res.result
+
+
 if __name__ == "__main__":
     # test_zk_client()
     # test_zk_publisher()
@@ -147,4 +159,5 @@ if __name__ == "__main__":
     # test_host_selector()
     # test_schedule_task()
     # test_client_pool()
-    test_client()
+    # test_client()
+    test_cirrus_client()
