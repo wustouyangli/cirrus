@@ -3,6 +3,9 @@
 import socket
 import struct
 import select
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ConnectionStatus(object):
@@ -25,12 +28,18 @@ def socket_exception_wrapper(func):
 class EpollConnection(object):
     def __init__(self, new_socket, epoll):
         self._socket = new_socket
-        self._socket.setblocking(False)
+        self._socket.setblocking(True)
         self._epoll = epoll
 
         self._status = ConnectionStatus.WAIT_LEN
         self._msg_len = 0
         self._msg = b''
+
+    def get_msg(self):
+        return self._msg
+
+    def get_fileno(self):
+        return self._socket.fileno()
 
     def ready(self, succeed, msg):
         assert self._status == ConnectionStatus.WAIT_PROCESS
@@ -58,6 +67,9 @@ class EpollConnection(object):
             self._msg_len, = struct.unpack('!i', self._msg)
             if self._msg_len <= 0:
                 self.close()
+            else:
+                self._msg = b''
+                self._status = ConnectionStatus.WAIT_MSG
 
     @socket_exception_wrapper
     def read(self):

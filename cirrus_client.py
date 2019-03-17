@@ -3,7 +3,7 @@
 import inspect
 import functools
 from thrift.protocol.TBinaryProtocol import TBinaryProtocolAcceleratedFactory
-from thrift.transport.TTransport import TBufferedTransportFactory
+from thrift.transport.TTransport import TFramedTransportFactory
 from util.common_util import CommonUtil
 from client.host_selector import HostSelector
 from client.host_provider import HostProvider
@@ -11,7 +11,6 @@ from client.client import Client
 from client.client_pool import ClientPool
 
 DEFAULT_PROTOCOL_FACTORY = TBinaryProtocolAcceleratedFactory()
-DEFAULT_TRANSPORT_FACTORY = TBufferedTransportFactory()
 MILLIS_PER_SEC = 1000.0
 
 
@@ -21,7 +20,6 @@ class CirrusClient(object):
                  req_timeout=5000, socket_connection_timeout=1000,
                  pool_acquire_client_timeout=1000, retry_count=3,
                  protocol_factory=DEFAULT_PROTOCOL_FACTORY,
-                 transport_factory=DEFAULT_TRANSPORT_FACTORY,
                  use_weight_host_selector=True):
         service_key = CommonUtil.get_service_key(thrift_module)
         host_provider = HostProvider(service_key, tag)
@@ -40,7 +38,7 @@ class CirrusClient(object):
         self._retry_count = retry_count
 
         self._protocol_factory = protocol_factory
-        self._transport_factory = transport_factory
+        self._transport_factory = TFramedTransportFactory()
         self._iface = thrift_module.Iface
 
         def close_client(client):

@@ -175,7 +175,7 @@ class EpollServer(TServer):
                         if connection.status == ConnectionStatus.WAIT_PROCESS:
                             try:
                                 if self._connection_limiter.try_acquire():
-                                    self._tasks.put_nowait([connection.message, connection.flieno()])
+                                    self._tasks.put_nowait([connection.get_msg(), connection.get_flieno()])
                                 else:
                                     connection.reset()
                                     del self._clients[fileno]
