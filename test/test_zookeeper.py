@@ -8,8 +8,10 @@ monkey.patch_all()
 import logging
 logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(asctime)s - %(name)s %(process)d - %(message)s')
 
+import sys
 import json
 import time
+import select
 from zookeeper.zk_client import ZkClient
 from zookeeper.zk_publisher import ZkPublisher
 
@@ -21,7 +23,10 @@ from client.client_pool import ClientPool
 from util.schedule_task import ScheduleTask
 from client.client import Client
 from cirrus_client import CirrusClient
-from test.oyl_thrift.gen_py.com.oyl import OylWorkService
+from oyl_thrift.gen_py.com.oyl import OylWorkService
+
+from server.epoll_connection import EpollConnection
+from thrift.transport.TSocket import TServerSocket
 
 
 def test_zk_client():
@@ -146,7 +151,6 @@ def test_cirrus_client():
 
     client = CirrusClient(thrift_module, pool_size=5)
 
-
     def f(client):
         op = 'sub'
         a = 10
@@ -155,11 +159,23 @@ def test_cirrus_client():
         print res.result
 
     jobs = []
-    for i in range(30):
+    for i in range(1):
         jobs.append(gevent.spawn(f, client))
 
     gevent.joinall(jobs)
 
+
+def test_epoll_connection():
+    my_epoll = select.poll()
+    transport = TServerSocket(host='127.0.0.1', port=9090)
+    transport.listen()
+    # transport.handle.setblocking(True)
+    client = transport.accept().handle
+    print 'client fileno: %s' % client.fileno()
+    my_epoll.register(client.fileno(), select.EPOLLIN)
+    epoll_connection = EpollConnection(client, my_epoll)
+    epoll_connection.read()
+    # epoll_connection.close()
 
 
 if __name__ == "__main__":
@@ -170,4 +186,9 @@ if __name__ == "__main__":
     # test_schedule_task()
     # test_client_pool()
     # test_client()
-    test_cirrus_client()
+    # test_cirrus_client()
+    if len(sys.argv) == 2:
+        if sys.argv[1] == 'client':
+            test_cirrus_client()
+        elif sys.argv[1] == 'server':
+            test_epoll_connection()
