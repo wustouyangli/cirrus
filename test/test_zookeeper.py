@@ -27,6 +27,11 @@ from oyl_thrift.gen_py.com.oyl import OylWorkService
 
 from server.epoll_connection import EpollConnection
 from thrift.transport.TSocket import TServerSocket
+from thrift.transport import TTransport
+from thrift.protocol.TBinaryProtocol import TBinaryProtocolAcceleratedFactory
+from multiprocessing import Queue
+
+PROTOCOL_FACTORY = TBinaryProtocolAcceleratedFactory()
 
 
 def test_zk_client():
@@ -165,16 +170,28 @@ def test_cirrus_client():
     gevent.joinall(jobs)
 
 
+class workHandler():
+    pass
+
 def test_epoll_connection():
+    queue = Queue(5)
     my_epoll = select.poll()
     transport = TServerSocket(host='127.0.0.1', port=9090)
     transport.listen()
-    # transport.handle.setblocking(True)
+    transport.handle.setblocking(True)
     client = transport.accept().handle
     print 'client fileno: %s' % client.fileno()
     my_epoll.register(client.fileno(), select.EPOLLIN)
     epoll_connection = EpollConnection(client, my_epoll)
     epoll_connection.read()
+    epoll_connection.read()
+    queue.put_nowait([epoll_connection.get_msg(), epoll_connection.get_fileno()])
+
+    message, fileno = queue.get()
+    itransport = TTransport.TMemoryBuffer(message)
+    otransport = TTransport.TMemoryBuffer()
+    iprot = PROTOCOL_FACTORY.getProtocol(itransport)
+    oprot = PROTOCOL_FACTORY.getProtocol(otransport)
     # epoll_connection.close()
 
 
