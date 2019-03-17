@@ -28,7 +28,7 @@ def socket_exception_wrapper(func):
 class EpollConnection(object):
     def __init__(self, new_socket, epoll):
         self._socket = new_socket
-        self._socket.setblocking(True)
+        self._socket.setblocking(False)
         self._epoll = epoll
 
         self._status = ConnectionStatus.WAIT_LEN

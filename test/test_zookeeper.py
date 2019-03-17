@@ -209,8 +209,6 @@ def test_epoll_connection():
     epoll_connection.write()
     epoll_connection.close()
 
-    # epoll_connection.close()
-
 
 if __name__ == "__main__":
     # test_zk_client()
