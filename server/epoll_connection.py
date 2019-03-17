@@ -41,18 +41,18 @@ class EpollConnection(object):
     def get_fileno(self):
         return self._socket.fileno()
 
-    def ready(self, succeed, msg):
+    def ready(self, succeed, resp_msg):
         assert self._status == ConnectionStatus.WAIT_PROCESS
         if not succeed:
             self.close()
             return
 
         self._msg_len = 0
-        if len(msg) == 0:
+        if len(resp_msg) == 0:
             self._msg = b''
             self._status = ConnectionStatus.WAIT_LEN  # 等待消息长度
         else:
-            self._msg = struct.pack('!i', len(msg)) + msg
+            self._msg = struct.pack('!i', len(resp_msg)) + resp_msg
             self._status = ConnectionStatus.PROCESSING  # 处理中
             self._modify_epoll(self._socket.fileno(), select.EPOLLOUT)
 

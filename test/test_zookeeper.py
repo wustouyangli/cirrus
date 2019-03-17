@@ -24,12 +24,13 @@ from util.schedule_task import ScheduleTask
 from client.client import Client
 from cirrus_client import CirrusClient
 from oyl_thrift.gen_py.com.oyl import OylWorkService
+from oyl_thrift.gen_py.com.oyl.ttypes import Work
 
 from server.epoll_connection import EpollConnection
 from thrift.transport.TSocket import TServerSocket
 from thrift.transport import TTransport
 from thrift.protocol.TBinaryProtocol import TBinaryProtocolAcceleratedFactory
-from multiprocessing import Queue
+from Queue import LifoQueue
 
 PROTOCOL_FACTORY = TBinaryProtocolAcceleratedFactory()
 
@@ -170,28 +171,44 @@ def test_cirrus_client():
     gevent.joinall(jobs)
 
 
-class workHandler():
-    pass
+class workHandler(object):
+    def __init__(self):
+        pass
+
+    def work(self, op, a, b):
+        if op == 'add':
+            return Work(result=a + b)
+        elif op == 'sub':
+            return Work(result=a - b)
+        return Work(result=0)
+
 
 def test_epoll_connection():
-    queue = Queue(5)
+    thrift_module = OylWorkService
+    process = thrift_module.Processor(workHandler())
+    queue = LifoQueue(5)
     my_epoll = select.poll()
     transport = TServerSocket(host='127.0.0.1', port=9090)
     transport.listen()
     transport.handle.setblocking(True)
     client = transport.accept().handle
-    print 'client fileno: %s' % client.fileno()
     my_epoll.register(client.fileno(), select.EPOLLIN)
     epoll_connection = EpollConnection(client, my_epoll)
     epoll_connection.read()
     epoll_connection.read()
-    queue.put_nowait([epoll_connection.get_msg(), epoll_connection.get_fileno()])
-
+    print 'connection: msg:  %s, fileno: %s' % (epoll_connection.get_msg(), epoll_connection.get_fileno())
+    queue.put([epoll_connection.get_msg(), epoll_connection.get_fileno()])
     message, fileno = queue.get()
     itransport = TTransport.TMemoryBuffer(message)
     otransport = TTransport.TMemoryBuffer()
     iprot = PROTOCOL_FACTORY.getProtocol(itransport)
     oprot = PROTOCOL_FACTORY.getProtocol(otransport)
+    process.process(iprot, oprot)
+    response = (True, otransport.getvalue())
+    epoll_connection.ready(*response)
+    epoll_connection.write()
+    epoll_connection.close()
+
     # epoll_connection.close()
 
 
