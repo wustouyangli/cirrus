@@ -77,16 +77,16 @@ class CirrusServer(object):
         self._handler = handler
         self._worker_process = None
         self._local_ip = CommonUtil.get_local_ip()
-        instance_path = '%s/%s:%s' % (self._service_key, self._local_ip, self._port)
-        self._zk_publisher = ZkPublisher(instance_path)
+        instance_path = '%s:%s' % (self._local_ip, self._port)
+        self._zk_publisher = ZkPublisher(self._service_key, instance_path)
 
     def start(self):
         try:
-            logger.info('master process id: %d', os.getpid())
+            logger.info('Master process id: %d', os.getpid())
             # 启动工作进程
             worker_process = Process(target=self._start)
             worker_process.start()
-            logger.info('worker process id: %d, port: %d', worker_process.pid, self._port)
+            logger.info('Worker process id: %d, port: %d', worker_process.pid, self._port)
             self._worker_process = worker_process
 
             # kill命令不加参数终止进程
@@ -102,7 +102,7 @@ class CirrusServer(object):
             logger.error('Worker process id: %d unexpected exit', worker_process.pid)
         except Exception as e:
             # 主进程异常退出
-            logger.error('master process id: %d error: %s', os.getpid(), e.message)
+            logger.error('Master process id: %d error: %s', os.getpid(), e.message)
             self._stop(exit_code=1)
 
     def _start(self):
@@ -111,14 +111,14 @@ class CirrusServer(object):
         self._server.serve()
 
     def _signal_exit(self, signum, frame):
-        logger.info('master process id: %d receive signal %d', os.getpid(), signum)
+        logger.info('Master process id: %d receive signal %d', os.getpid(), signum)
         if signum == signal.SIGINT:
             self._stop(graceful=False)
         else:
             self._stop(graceful=True)
 
     def _stop(self, exit_code=0, graceful=True):
-        logger.info('master process id: %d stop worker process: %d', os.getpid(), self._worker_process.pid)
+        logger.info('Master process id: %d stop worker process: %d', os.getpid(), self._worker_process.pid)
         self._unregister_server()
         if graceful:
             time.sleep(CommonUtil.get_sec_for_server_teardown())

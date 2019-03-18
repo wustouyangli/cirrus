@@ -37,7 +37,7 @@ class EpollServer(TServer):
         # EPOLLIN设置读操作位
         self._epoll.register(self._read_side, select.EPOLLIN)
 
-        self._harakiri = kwargs.get('harakiri', 50000)
+        self._harakiri = kwargs.get('harakiri', 5)
 
         manager = Manager()
         self._responses = manager.dict()

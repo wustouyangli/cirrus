@@ -46,7 +46,7 @@ class CommonUtil(object):
     def get_service_weight(cls, weight=None):
         if weight is not None:
             return weight
-        return env_dict.get(cls.SERVICE_WEIGHT_KEY, 0)
+        return env_dict.get(cls.SERVICE_WEIGHT_KEY, 100)
 
     @classmethod
     def is_prod(cls):
