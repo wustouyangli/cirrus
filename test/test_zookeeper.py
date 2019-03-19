@@ -4,7 +4,9 @@ import env_base
 import gevent
 from gevent import monkey
 
-monkey.patch_all()
+# monkey.patch_all()
+
+
 import logging
 logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(asctime)s - %(name)s %(process)d - %(message)s')
 
@@ -31,6 +33,7 @@ from thrift.transport.TSocket import TServerSocket
 from thrift.transport import TTransport
 from thrift.protocol.TBinaryProtocol import TBinaryProtocolAcceleratedFactory
 from Queue import LifoQueue
+from cirrus_server import CirrusServer
 
 PROTOCOL_FACTORY = TBinaryProtocolAcceleratedFactory()
 
@@ -210,6 +213,13 @@ def test_epoll_connection():
     epoll_connection.close()
 
 
+def test_cirrus_server():
+    thrift_module = OylWorkService
+    handler = workHandler()
+    cirrus_server = CirrusServer(thrift_module, handler)
+    cirrus_server.start()
+
+
 if __name__ == "__main__":
     # test_zk_client()
     # test_zk_publisher()
@@ -224,3 +234,5 @@ if __name__ == "__main__":
             test_cirrus_client()
         elif sys.argv[1] == 'server':
             test_epoll_connection()
+        elif sys.argv[1] == 'cirrus_server':
+            test_cirrus_server()
