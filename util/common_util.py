@@ -53,6 +53,10 @@ class CommonUtil(object):
         return env_dict.get(cls.ENV_KEY, EnvType.DEV) == EnvType.PROD
 
     @classmethod
+    def is_dev(cls):
+        return env_dict.get(cls.ENV_KEY, EnvType.DEV) == EnvType.DEV
+
+    @classmethod
     def get_hostname(cls):
         if cls._HOSTNAME is None:
             cls._HOSTNAME = socket.gethostname()
@@ -72,5 +76,8 @@ class CommonUtil(object):
 
     @classmethod
     def get_local_ip(cls):
-        local_ip = netifaces.ifaddresses('eth0')[2][0]['addr']
+        local_ip = socket.gethostbyname(socket.gethostname())
+        if local_ip == '127.0.0.1':
+            netifaces.ifaddresses('eth0')
+            local_ip = netifaces.ifaddresses('eth0')[2][0]['addr']
         return local_ip

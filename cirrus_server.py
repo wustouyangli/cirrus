@@ -123,6 +123,8 @@ class CirrusServer(object):
         if graceful:
             time.sleep(CommonUtil.get_sec_for_server_teardown())
         self._server.stop()
+        self._worker_process.terminate()
+        self._worker_process.join()
         sys.exit(exit_code)
 
     def _unregister_server(self):

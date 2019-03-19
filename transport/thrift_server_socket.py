@@ -11,7 +11,7 @@ class ThriftServerSocket(TServerSocket):
 
     # 对thrift进行了封装,可定制监听大小和接收数据的超时时间
     def __init__(self, queue=128, recv_timeout=50000, **kwargs):
-        super(TServerSocket, self).__init__(**kwargs)
+        super(ThriftServerSocket, self).__init__(**kwargs)
         self.queue = queue
         self.recv_timeout = recv_timeout
 
