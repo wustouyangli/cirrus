@@ -4,3 +4,4 @@ thrift==0.10.0
 kazoo==2.2.1
 netifaces==0.10.9
 gevent==1.4.0
+setproctitle==1.1.10

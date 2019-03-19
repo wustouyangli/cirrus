@@ -83,6 +83,7 @@ class CirrusServer(object):
     def start(self):
         try:
             logger.info('Master process id: %d', os.getpid())
+            CommonUtil.set_proctitle('master')
             # 启动工作进程
             worker_process = Process(target=self._start)
             worker_process.start()
@@ -108,6 +109,7 @@ class CirrusServer(object):
     def _start(self):
         # SIG_IGN忽略子进程状态信息,子进程会被自动回收,不会产生僵尸进程
         signal.signal(signal.SIGINT, signal.SIG_IGN)
+        CommonUtil.set_proctitle('worker')
         self._server.serve()
 
     def _signal_exit(self, signum, frame):

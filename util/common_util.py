@@ -3,6 +3,7 @@
 import os
 import socket
 import netifaces
+import setproctitle
 
 env_dict = os.environ
 
@@ -81,3 +82,8 @@ class CommonUtil(object):
             netifaces.ifaddresses('eth0')
             local_ip = netifaces.ifaddresses('eth0')[2][0]['addr']
         return local_ip
+
+    @classmethod
+    def set_proctitle(cls, proctitle):
+        root = setproctitle.getproctitle()
+        setproctitle.setproctitle('%s-%s' % (root, proctitle))
