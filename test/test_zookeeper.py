@@ -4,18 +4,15 @@ import env_base
 import gevent
 from gevent import monkey
 
-# monkey.patch_all()
-
+monkey.patch_all()
 
 import logging
 logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(asctime)s - %(name)s %(process)d - %(message)s')
 
-import sys
 import json
 import time
 import select
 from zookeeper.zk_client import ZkClient
-from zookeeper.zk_publisher import ZkPublisher
 
 from server.instance_config_data import InstanceConfigData
 from util.common_util import CommonUtil
@@ -24,7 +21,6 @@ from client.host_selector import HostSelector
 from client.client_pool import ClientPool
 from util.schedule_task import ScheduleTask
 from client.client import Client
-from cirrus_client import CirrusClient
 from oyl_thrift.gen_py.com.oyl import OylWorkService
 from oyl_thrift.gen_py.com.oyl.ttypes import Work
 
@@ -33,7 +29,6 @@ from thrift.transport.TSocket import TServerSocket
 from thrift.transport import TTransport
 from thrift.protocol.TBinaryProtocol import TBinaryProtocolAcceleratedFactory
 from Queue import LifoQueue
-from cirrus_server import CirrusServer
 
 PROTOCOL_FACTORY = TBinaryProtocolAcceleratedFactory()
 
@@ -155,25 +150,6 @@ def test_client():
     print res.result
 
 
-def test_cirrus_client():
-    thrift_module = OylWorkService
-
-    client = CirrusClient(thrift_module, pool_size=5)
-
-    def f(client):
-        op = 'sub'
-        a = 10
-        b = 2
-        res = client.work(op, a, b)
-        print res.result
-
-    jobs = []
-    for i in range(1):
-        jobs.append(gevent.spawn(f, client))
-
-    gevent.joinall(jobs)
-
-
 class workHandler(object):
     def __init__(self):
         pass
@@ -213,26 +189,5 @@ def test_epoll_connection():
     epoll_connection.close()
 
 
-def test_cirrus_server():
-    thrift_module = OylWorkService
-    handler = workHandler()
-    cirrus_server = CirrusServer(thrift_module, handler)
-    cirrus_server.start()
-
-
 if __name__ == "__main__":
-    # test_zk_client()
-    # test_zk_publisher()
-    # test_host_provider()
-    # test_host_selector()
-    # test_schedule_task()
-    # test_client_pool()
-    # test_client()
-    # test_cirrus_client()
-    if len(sys.argv) == 2:
-        if sys.argv[1] == 'client':
-            test_cirrus_client()
-        elif sys.argv[1] == 'server':
-            test_epoll_connection()
-        elif sys.argv[1] == 'cirrus_server':
-            test_cirrus_server()
+    test_epoll_connection()

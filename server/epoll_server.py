@@ -173,10 +173,10 @@ class EpollServer(TServer):
                     connection = self._clients.get(fileno)
                     if connection:
                         connection.read()
-                        if connection.status == ConnectionStatus.WAIT_PROCESS:
+                        if connection.get_status() == ConnectionStatus.WAIT_PROCESS:
                             try:
                                 if self._connection_limiter.try_acquire():
-                                    self._tasks.put_nowait([connection.get_msg(), connection.get_flieno()])
+                                    self._tasks.put_nowait([connection.get_msg(), connection.get_fileno()])
                                 else:
                                     connection.reset()
                                     del self._clients[fileno]
@@ -187,11 +187,11 @@ class EpollServer(TServer):
                     connection = self._clients[fileno]
                     connection.reset()
                     del self._clients[fileno]
-            elif events & select.EPOLLOUT:
+            elif event & select.EPOLLOUT:
                 connection = self._clients.get(fileno)
                 if connection:
                     connection.write()
-            elif events & select.EPOLLHUP:
+            elif event & select.EPOLLHUP:
                 connection = self._clients.get(fileno)
                 if connection:
                     connection.close()

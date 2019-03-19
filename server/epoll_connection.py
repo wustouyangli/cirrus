@@ -41,6 +41,9 @@ class EpollConnection(object):
     def get_fileno(self):
         return self._socket.fileno()
 
+    def get_status(self):
+        return self._status
+
     def ready(self, succeed, resp_msg):
         assert self._status == ConnectionStatus.WAIT_PROCESS
         if not succeed:
