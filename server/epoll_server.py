@@ -82,7 +82,7 @@ class EpollServer(TServer):
         self.serverTransport.listen()
         self.serverTransport.handle.setblocking(0)
         # 注册thrift transport监视的文件描述符
-        self.serverTransport.register(self.serverTransport.handle.fileno(), select.EPOLLIN)
+        self._epoll.register(self.serverTransport.handle.fileno(), select.EPOLLIN)
 
         self._stop_flag.value = False
         self._stop_read_flag.value = False
@@ -110,6 +110,7 @@ class EpollServer(TServer):
                     self._fork_worker_process(proc_no)
 
     def _start_worker_process(self, proc_no):
+        CommonUtil.set_proctitle('sub_process_%s' % proc_no)
         self._register_harakiri()
         # 进程结束信号
         signal.signal(signal.SIGTERM, self._terminate_handler)
