@@ -35,22 +35,20 @@ class ScheduleTask(object):
         self._task = threading.Thread(target=self._run)
         self._task.setDaemon(True)
         self._task.start()
-    
+
     def _run(self):
         try:
             while True:
                 cur_time = time.time()
                 if cur_time - self._interval_seconds >= self._last_schedule_time:
-
                     self._handler(*self._args, **self._kwargs)
                     self._last_schedule_time = time.time()
-
                 sleep_seconds = self._last_schedule_time + self._interval_seconds - time.time()
                 if sleep_seconds < 0:
                     sleep_seconds = 0
                 time.sleep(sleep_seconds)
-        except Exception as e:
-            logger.error("Schedule task %s unexpected exit, exception: %s" % self._name, e)
+        except BaseException as e:
+            logger.error("Schedule task %s unexpected exit, exception: %s", self._name, e)
             self.stop()
 
     def _async_raise(self, tid, exctype):
@@ -72,8 +70,5 @@ class ScheduleTask(object):
 
     def stop(self):
         if self._task:
-            self._task.join()
-            time.sleep(1)
-            if self._task.is_alive():
-                self.force_stop(self._task)
+            self.force_stop(self._task)
             logger.info("Schedule task %s stopped." % self._name)

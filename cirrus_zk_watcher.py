@@ -14,6 +14,6 @@ if __name__ == "__main__":
     daemon = bool(args.d)
     log_level = logging.DEBUG if bool(args.debug) else logging.INFO
     zk_watcher = ZkWatcher(daemon=daemon, log_level=log_level)
-    zk_watcher.start()
+    zk_watcher.watch()
 
 

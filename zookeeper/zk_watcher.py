@@ -2,6 +2,7 @@
 
 import os
 import sys
+import time
 import psutil
 import logging
 import signal
@@ -23,7 +24,6 @@ class ZkWatcher(ZkClient):
         super(ZkWatcher, self).__init__()
         if not os.path.exists(self._zk_path):
             os.makedirs(self._zk_path)
-
         log_format = log_format or DEFAULT_LOG_FORMAT
         if daemon:
             log_file = os.path.join(self._zk_path, ZK_WATCHER_LOG_FILE)
@@ -33,7 +33,7 @@ class ZkWatcher(ZkClient):
         self._pid_file = os.path.join(self._zk_path, ZK_WATCHER_PID_FILE)
         self._watcher = None
 
-    def start(self, start_after_seconds=0, interval_seconds=1):
+    def watch(self, start_after_seconds=0, interval_seconds=1):
         if os.path.exists(self._pid_file):
             with open(self._pid_file, 'r') as f:
                 pid = f.read()
@@ -54,14 +54,17 @@ class ZkWatcher(ZkClient):
         self._watcher = ScheduleTask('ZkWatcher', start_after_seconds, interval_seconds, self._start)
         self._watcher.run()
 
+        while not self._stop_flag:
+            try:
+                time.sleep(1)
+            except KeyboardInterrupt:
+                self.stop()
+
     def _start(self):
-        if self._stop_flag:
-            raise Exception('Zookeeper watcher stopped.')
+        print 'hi, oyl'
 
     def stop(self):
         super(ZkWatcher, self).stop()
-        if os.path.exists(self._pid_file):
-            os.remove(self._pid_file)
         if self._watcher:
             self._watcher.stop()
 
