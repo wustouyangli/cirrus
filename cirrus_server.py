@@ -14,6 +14,7 @@ from transport.thrift_server_socket import ThriftServerSocket
 from server.epoll_server import EpollServer
 from multiprocessing import Process
 from zookeeper.zk_publisher import ZkPublisher
+from server.handler_decorator import HandlerDecorator
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +42,10 @@ class CirrusServer(object):
         root_dir = os.path.dirname(boot_script_path)
 
         service_key = CommonUtil.get_service_key(thrift_module)
+        handler_class = type(handler)
+        # 处理类装饰器
+        handler_decorator_class = type(handler_class.__name__, (handler_class, HandlerDecorator), {})
+        handler = handler_decorator_class()
         # thrift processor
         processor = thrift_module.Processor(handler)
         port = int(port)

@@ -51,33 +51,40 @@ class EnsureConnectionClient(type):
         def ensure_connection(method, service_name, method_name):
             @functools.wraps(method)
             def wrapper(self, *args, **kwargs):
+                param_list = []
+                for arg in args:
+                    param_list.append(str(arg))
+                for key, value in kwargs.items():
+                    param_list.append('%s=%s' % (key, value))
+                param_str = ', '.join(param_list) if len(param_list) else ''
+
                 retry_count = self._retry_count
                 left_try_count = retry_count
                 while left_try_count:
                     start_time = time.time()
-                    
+
                     try:
                         # 连接服务端
                         client = self.connect(left_try_count == 1)
                         res = method(client, *args, **kwargs)
                         time_taken = time.time() - start_time
-                        logger.info('Request: %s.%s (connect to %s:%s) call succeed, taken %s seconds.',
-                                    service_name, method_name, self._ip, self._port, time_taken)
+                        logger.info('Request: %s.%s(%s) call succeed(connect to %s:%s), taken %s seconds',
+                                    service_name, method_name, param_str, self._ip, self._port, time_taken)
                         # 更新过期连接
                         self.refresh_connection()
                         return res
                     except Exception as e:
                         time_taken = time.time() - start_time
-                        logger.error('Request: %s.%s (connect to %s:%s) call failed, taken %s seconds, exception: %s',
-                                    service_name, method_name, self._ip, self._port, time_taken, e)
+                        logger.error('Request: %s.%s(%s) call failed(connect to %s:%s), taken %s seconds, exception: %s',
+                                    service_name, method_name, param_str, self._ip, self._port, time_taken, e)
                         left_try_count -= 1
                         # 断开连接
                         self.disconnect()
                         if left_try_count == 1:
                             self._host_selector.invalid_host()
                         if not left_try_count:
-                            logger.error('Request: %s.%s call failed after all %s retries',
-                                        service_name, method_name, retry_count)
+                            logger.error('Request: %s.%s(%s) call failed after all %s retries',
+                                        service_name, method_name, param_str, retry_count)
                             raise
 
             return wrapper
