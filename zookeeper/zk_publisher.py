@@ -44,12 +44,12 @@ class ZkPublisher(ZkClient):
     def _state_listener(self, state):
         if state in [KazooState.LOST, KazooState.SUSPENDED]:
             self._connection_lost = True
-            logger.info('Zookeeper connection lost, current state: %s', state)
+            logger.info('(Zk-publisher)Zookeeper connection lost, current state: %s', state)
         elif state == KazooState.CONNECTED and self._connection_lost:
             # 重新连接
             self._client.handler.spawn(self.register, self._instance_config_data)
             self._connection_lost = False
-            logger.info('Zookeeper reconnection, current state: %s', state)
+            logger.info('(Zk-publisher)Zookeeper reconnection, current state: %s', state)
 
     def _ensure_path(self):
         self._client.ensure_path(self._service_path)

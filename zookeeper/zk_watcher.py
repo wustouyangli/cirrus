@@ -7,15 +7,41 @@ import psutil
 import logging
 import signal
 import atexit
+import glob
 from util.common_util import CommonUtil
 from zookeeper.zk_client import ZkClient
 from util.schedule_task import ScheduleTask
+from kazoo.protocol.states import KazooState
 
 logger = logging.getLogger(__name__)
 
 ZK_WATCHER_PID_FILE = 'watcher.pid'
 ZK_WATCHER_LOG_FILE = 'watcher.log'
 DEFAULT_LOG_FORMAT = '%(levelname)s - %(asctime)s - %(name)s %(process)d - %(message)s'
+
+
+class InstanceNode(object):
+    def __init__(self, service_path, instance_host):
+        self._service_path = service_path
+        self._instance_host = instance_host
+        if not os.path.exists(self._service_path):
+            os.makedirs(self._service_path)
+        self._instance_path = os.path.join(self._service_path, self._instance_host)
+        self._data = None
+
+    def update(self, data):
+        if data is None:
+            if os.path.exists(self._instance_path):
+                logger.info('Remove instance path: %s', self._instance_path)
+                os.remove(self._instance_path)
+        else:
+            if self._data is None or self._data != data:
+                file_bak = self._instance_path + '.bak'
+                with open(file_bak, 'w') as f:
+                    f.write(data)
+                os.rename(file_bak, self._instance_path)
+                self._data = data
+                logger.info('Update instance path: %s, data: %s', self._instance_path, data)
 
 
 class ZkWatcher(ZkClient):
@@ -32,6 +58,7 @@ class ZkWatcher(ZkClient):
             logging.basicConfig(format=log_format, level=log_level)
         self._pid_file = os.path.join(self._zk_path, ZK_WATCHER_PID_FILE)
         self._watcher = None
+        self._instance_node_map = {}
 
     def watch(self, start_after_seconds=0, interval_seconds=1):
         if os.path.exists(self._pid_file):
@@ -61,7 +88,57 @@ class ZkWatcher(ZkClient):
                 self.stop()
 
     def _start(self):
-        print 'hi, oyl'
+        self._client.add_listener(self._state_listener)
+        if self._connection_lost:
+            return
+        service_keys = self._client.get_children(self._zk_path)
+        for service_key in service_keys:
+
+            if self._connection_lost:
+                return
+            service_path = os.path.join(self._zk_path, service_key)
+            instance_hosts = self._client.get_children(service_path)
+            for instance_host in instance_hosts:
+                instance_path = os.path.join(service_path, instance_host)
+                if self._connection_lost:
+                    return
+                data, _ = self._client.get(instance_path)
+                if instance_path not in self._instance_node_map:
+                    self._instance_node_map[instance_path] = InstanceNode(service_path, instance_host)
+                self._instance_node_map[instance_path].update(data)
+
+        regex = os.path.join(self._zk_path, '*')
+        service_dirs = glob.glob(regex)
+        for service_dir in service_dirs:
+            if not os.path.isdir(service_dir):
+                continue
+            service_abspath = os.path.abspath(service_dir)
+            regex = os.path.join(service_abspath, '*')
+            instance_files = glob.glob(regex)
+            if not bool(instance_files):
+                os.rmdir(service_dir)
+            for instance_file in instance_files:
+                if not os.path.isfile(instance_file):
+                    continue
+                host = os.path.basename(instance_file)
+                host_info = host.split(':')
+                if len(host_info) == 2 and host_info[1].isdigit():
+                    instance_abspath = os.path.abspath(instance_file)
+
+                    if self._connection_lost:
+                        return
+                    if not self._client.exists(instance_abspath):
+                        os.remove(instance_abspath)
+                        logger.info('Remove instance path: %s', instance_abspath)
+
+    def _state_listener(self, state):
+        if state in [KazooState.LOST, KazooState.SUSPENDED]:
+            self._connection_lost = True
+            logger.info('(Zk-watcher)Zookeeper connection lost, current state: %s', state)
+        elif state == KazooState.CONNECTED and self._connection_lost:
+            # 重新连接
+            self._connection_lost = False
+            logger.info('(Zk-watcher)Zookeeper reconnection, current state: %s', state)
 
     def stop(self):
         super(ZkWatcher, self).stop()
