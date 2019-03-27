@@ -1,20 +1,16 @@
 # coding=utf-8
 
 import env_base
-import gevent
 from gevent import monkey
-
-# monkey.patch_all()
-
+import gevent
 import logging
-logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(asctime)s - %(name)s %(process)d - %(message)s')
-
 from cirrus_client import CirrusClient
-from oyl_thrift.gen_py.com.oyl import OylWorkService
+from calculator import CalculatorService
+logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(asctime)s - %(name)s %(process)d - %(message)s')
 
 
 def test_cirrus_client():
-    thrift_module = OylWorkService
+    thrift_module = CalculatorService
 
     client = CirrusClient(thrift_module, pool_size=5)
 
@@ -22,7 +18,7 @@ def test_cirrus_client():
         op = 'sub'
         a = 10
         b = 2
-        res = client.work(op, a, b)
+        res = client.calculate(op, a, b)
         print res.result
 
     jobs = []
