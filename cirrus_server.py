@@ -33,7 +33,7 @@ class CirrusServer(object):
                  protocol_factory=DEFAULT_THRIFT_PROTOCOL_FACTORY,
                  thrift_listen_queue_size=DEFAULT_THRIFT_LISTEN_QUEUE_SIZE,
                  worker_process_number=DEFAULT_WORKER_PROCESS_NUMBER,
-                 harikiri=DEFAULT_HARAKIRI, tag=None, weight=None,
+                 harikiri=DEFAULT_HARAKIRI, tag=None, weight=100,
                  event_queue_size=DEFAULT_EVENT_QUEUE_SIZE,
                  thrift_recv_timeout=DEFAULT_THRIFT_RECV_TIMEOUT):
         # 父级启动文件路径

@@ -1,7 +1,6 @@
 # coding=utf-8
 
 import env_base
-from gevent import monkey
 import gevent
 import logging
 from cirrus_client import CirrusClient

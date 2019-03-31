@@ -1,17 +1,17 @@
 # coding=utf-8
 
 import env_base
-from gevent import monkey
 import logging
 from calculator import CalculatorService
 from calculator.ttypes import ResultResponse
+from calculator.CalculatorService import Client
 from cirrus_server import CirrusServer
 logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(asctime)s - %(name)s %(process)d - %(message)s')
 
 logger = logging.getLogger(__name__)
 
 
-class CalculatorHandler(object):
+class CalculatorHandler(Client):
     def __init__(self):
         pass
 
