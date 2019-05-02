@@ -1,25 +1,41 @@
-## 项目名：cirrus  
-#### 简介：基于zookeeper对微服务进行注册以及对thrift进行上层封装,实现微服务之间rpc调用的分布式框架  
-#### 环境要求
-* python版本不低于2.7, linux或mac os操作系统尤佳
-#### 准备知识
+# 项目名：cirrus  
+
+## 简介  
+
+* 基于zookeeper对微服务进行注册以及对thrift进行上层封装,实现微服务之间rpc调用的分布式框架  
+
+## 环境要求  
+
+* python2.7版本, linux或mac os操作系统
+
+## 准备知识
+
 * python2.7基础语法
 * thrift
 * zookeeper
 * 操作系统知识：进程、线程、信号、socket套接字、I/O多路复用epoll等
-#### 环境配置
+
+## 环境配置
+
 1. 下载后配置python虚拟环境  
 2. 安装相关依赖  
    `pip install -r requirements.txt`
-#### 项目打包及安装
+3. 安装zookeeper
+4. 安装thrift（建议0.10.0版本及以上）  
+
+## 项目打包及安装
+
 如果想把该项目安装到python虚拟环境下，可执行如下步骤：  
+
 1. 打包项目  
   `python setup.py bdist_egg`
 2. 安装项目  
   `python setup.py install`
-#### 项目主要模块
----
-##### server端：cirrus_server.py文件CirrusServer类  
+
+## 项目主要模块
+
+### 1. server端：cirrus_server.py文件CirrusServer类
+
 CirrusServer类初始化参数如下：  
 
 |参数名|解释|必选|默认值|
@@ -36,7 +52,8 @@ CirrusServer类初始化参数如下：
 |event_queue_size|请求事件缓冲池大小，当有很多个客户端请求过来时，缓冲池的作用时减少服务端处理请求的压力|否|100|
 |thrift_recv_timeout|thrift接收数据超时时间(豪秒)|否|50000|
 
-##### client端: cirrus_client.py文件CirrusClient类  
+### 2. client端: cirrus_client.py文件CirrusClient类  
+
 CirrusClient类初始化参数如下：
 
 |参数名|解释|必选|默认值|
@@ -51,22 +68,25 @@ CirrusClient类初始化参数如下：
 |protocol_factory|thrift协议工厂|否|TBinaryProtocolAcceleratedFactory|
 |use_weight_host_selector|使用权重值选择服务端实例host|否|True|
 
----
+## 原理图
 
-#### 样例测试
+![原理图](image/principle.png)
+
+## 样例测试
+
+需先完成环境配置，再按如下步骤进行：
+
 1. 进入到test目录下  
    `cd test`
 2. 生成thrift代码  
    `thrift --gen py calculator.thrift`
 3. 选中生成的gen-py文件夹，右键Make Directory as -> Sources Root  
-4. 在根目录下，启动zk watcher实时将zookeeper节点数据复制到本地  
+4. 进入zookeeper安装目录下的bin目录，启动zookeeper  
+   `./zkServer.sh start`
+5. 在根目录下，启动zk watcher实时将zookeeper节点数据复制到本地  
    `python cirrus_zk_watcher.py`
-5. 在test目录下，启动服务端(可启动多个服务端)  
+6. 在test目录下，启动服务端(可启动多个服务端)  
    `python mock_server.py`
-6. 在test目录下，启动客户端  
+7. 在test目录下，启动客户端  
    `python mock_client.py`
-7. 若需要关闭服务端，Ctrl + C即可  
-
-
-
-
+8. 若需要关闭服务端，Ctrl + C即可  
